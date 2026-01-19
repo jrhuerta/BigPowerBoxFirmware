@@ -110,12 +110,23 @@ static uint8_t slew_limit(uint8_t current, uint8_t target) {
   return target;
 }
 
+static uint8_t quantize_duty_pct(uint8_t duty) {
+  if (duty == 0)
+    return 0;
+  uint8_t pct = (uint8_t)((duty * 100L + 127) / 255);
+  uint8_t rounded = (uint8_t)(((pct + 2) / 5) * 5);
+  if (rounded > 100)
+    rounded = 100;
+  return (uint8_t)((rounded * 255L + 50) / 100);
+}
+
 static void update_dew_control(Ports* ports) {
   if (!ports || !ports->have_temp)
     return;
   int32_t margin = dew_margin_centi(ports->temp_centi, ports->humid_centi);
   ports->dewpoint_centi = ports->temp_centi - margin;
   int32_t dew_m_on_centi = g_config.dew_m_on_centi;
+  bool was_active = ports->dew_active;
   if (!ports->dew_active) {
     if (margin < dew_m_on_centi)
       ports->dew_active = true;
@@ -133,9 +144,27 @@ static void update_dew_control(Ports* ports) {
     }
     uint8_t duty_min = (uint8_t)((duty_min_pct * 255) / 100);
     uint8_t duty_max = (uint8_t)((duty_max_pct * 255) / 100);
-    target_duty = smoothstep_duty(duty_min, duty_max, margin, dew_m_on_centi);
+    uint8_t raw_target = smoothstep_duty(duty_min, duty_max, margin, dew_m_on_centi);
+    if (raw_target == 0) {
+      target_duty = 0;
+    } else if (raw_target < duty_min) {
+      // Drop to off when below minimum to avoid tiny duty cycles.
+      target_duty = 0;
+    } else {
+      target_duty = raw_target;
+    }
   }
-  uint8_t limited = slew_limit(ports->dew_duty, target_duty);
+  uint8_t limited = target_duty;
+  if (limited == 0) {
+    // Turn off immediately once below minimum.
+    limited = 0;
+  } else if (!was_active && ports->dew_active) {
+    // Jump straight to minimum when heating starts.
+    limited = quantize_duty_pct(limited);
+  } else {
+    limited = slew_limit(ports->dew_duty, limited);
+    limited = quantize_duty_pct(limited);
+  }
   ports_apply_dew_duty(ports, limited);
 }
 
@@ -170,7 +199,8 @@ static void init_board_pins() {
   pinMode(MUX2, OUTPUT);
   pinMode(OLEN, OUTPUT);
 
-  digitalWrite(OLEN, HIGH);
+  // Disable open-load diagnostics by default to avoid floating output voltage.
+  digitalWrite(OLEN, LOW);
   digitalWrite(MUX0, LOW);
   digitalWrite(MUX1, LOW);
   digitalWrite(MUX2, LOW);

@@ -127,3 +127,27 @@ void protocol_send_name(uint8_t port, const char* name) {
   out(name);
   out(EOCOMMAND);
 }
+
+void protocol_send_mcp_dump(uint8_t addr, bool probe_ok, bool read_a_ok, bool read_b_ok,
+                            uint8_t cached_a, uint8_t cached_b, uint8_t gpio_a,
+                            uint8_t gpio_b) {
+  out(SOCOMMAND);
+  out('J');
+  out(':');
+  out(addr);
+  out(':');
+  out((uint8_t)(probe_ok ? 1 : 0));
+  out(':');
+  out((uint8_t)(read_a_ok ? 1 : 0));
+  out(':');
+  out((uint8_t)(read_b_ok ? 1 : 0));
+  out(':');
+  out(cached_a);
+  out(':');
+  out(cached_b);
+  out(':');
+  out(gpio_a);
+  out(':');
+  out(gpio_b);
+  out(EOCOMMAND);
+}

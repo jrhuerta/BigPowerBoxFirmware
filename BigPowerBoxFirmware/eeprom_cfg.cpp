@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ports.h"
+
 namespace {
 bool cfg_differs(const Config& a, const Config& b) {
   if (a.portStatus != b.portStatus)
@@ -57,6 +59,35 @@ void eeprom_cfg_init(Config* cfg) {
   }
 
   if (found) {
+    // Guard against stale EEPROM data from older firmware revisions.
+    bool invalid_pwm_mode = false;
+    for (uint8_t i = 0; i < PWM_PORT_COUNT; i++) {
+      if (cfg->pwmPortMode[i] != PWM_MODE_VARIABLE &&
+          cfg->pwmPortMode[i] != PWM_MODE_SWITCHABLE &&
+          cfg->pwmPortMode[i] != PWM_MODE_DEW_AMBIENT) {
+        invalid_pwm_mode = true;
+        break;
+      }
+    }
+    if (invalid_pwm_mode) {
+      eeprom_cfg_defaults(cfg);
+      corrected = true;
+    }
+    uint16_t valid_mask = (PORT_COUNT >= 16) ? 0xFFFFu : (uint16_t)((1u << PORT_COUNT) - 1u);
+    uint16_t masked = cfg->portStatus & valid_mask;
+    if (masked != cfg->portStatus) {
+      cfg->portStatus = masked;
+      corrected = true;
+    }
+    for (uint8_t i = 0; i < PORT_COUNT; i++) {
+      if (ports_port_type(i) == 'a') {
+        uint16_t bit = (uint16_t)(1u << i);
+        if ((cfg->portStatus & bit) == 0) {
+          cfg->portStatus |= bit;
+          corrected = true;
+        }
+      }
+    }
     if (cfg->dew_m_on_centi < 0 || cfg->dew_m_on_centi > 500) {
       cfg->dew_m_on_centi = DEW_M_ON_CENTI;
       corrected = true;

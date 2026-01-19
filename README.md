@@ -53,6 +53,12 @@ loop also processes at most one command from the serial queue.
 This firmware avoids external libraries beyond the Arduino core. The only
 required dependency is `Wire` for I2C.
 
+# Debug Configuration
+The debug build can optionally synthesize a fake ambient probe when no sensor is
+connected. Set `DEBUG_FAKE_PROBE` in `board_config.h`:
+- `0`: disabled (no temp/humidity/dew in status if no sensor is found).
+- `1`: enabled (injects fake temp/humidity readings for testing).
+
 # Modularity
 Port order and capabilities are defined by the board signature in
 `board_config.h`. The signature controls the port list and the order of status
@@ -116,6 +122,8 @@ Example commands:
 | `K:<deg>[:<min>[:<max>]]` | Set dew config | `KOK` | Set dew margin on (deg, max 5), optional duty min/max (0-100, min <= max) |
 | `R:<scope>` | Reset | `ROK` | `NAMES` resets names to defaults (`Port00`..), `CONF` resets config/ports, `ALL` resets names+config |
 | `X:<tempC>:<hum>` | Debug override | `XOK` | When `DEBUG` is enabled: overrides ambient readings (`tempC` can be negative, `hum` must be 0..100), `X::` clears override |
+| `J` | Debug MCP dump | `J:<addr>:<probe_ok>:<read_a_ok>:<read_b_ok>:<cached_a>:<cached_b>:<gpio_a>:<gpio_b>` | When `DEBUG` is enabled: dump MCP23017 state and I2C health |
+| `L:<0|1>` | Debug OLEN | `LOK` | When `DEBUG` is enabled: set OLEN low/high (0 disables open-load diagnostics) |
 
 # Status Fields
 The `S` response includes:

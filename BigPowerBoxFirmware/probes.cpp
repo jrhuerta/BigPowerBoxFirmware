@@ -81,12 +81,14 @@ void probes_detect(Probes* p, Ports* ports) {
   update_signature(ports->have_temp, ports->have_press);
 
 #ifdef DEBUG
+#if DEBUG_FAKE_PROBE
   if (!ports->have_temp) {
     ports->have_temp = true;
     ports->debug_fake_probe = true;
     ports->temp_centi = DEBUG_FAKE_TEMP_CENTI;
     ports->humid_centi = DEBUG_FAKE_HUMID_CENTI;
   }
+#endif
   if (ports->have_temp && !ports->debug_fake_probe) {
     ports->debug_fake_probe = false;
   }

@@ -6,6 +6,10 @@
 
 #include "board_config.h"
 #include "eeprom_cfg.h"
+#ifdef DEBUG
+#include "i2c_bus.h"
+#include "mcp23017.h"
+#endif
 #include "protocol_format.h"
 
 namespace {
@@ -52,7 +56,7 @@ int8_t pwm_index_for_port(uint8_t port) {
 void save_port_status_config(const Ports* ports) {
   g_config.portStatus = 0;
   for (uint8_t i = 0; i < PORT_COUNT; i++) {
-    if (ports_get(ports, i))
+    if (ports_port_type(i) == 'a' || ports_get(ports, i))
       g_config.portStatus |= (1u << i);
   }
   eeprom_cfg_save(&g_config);
@@ -335,6 +339,37 @@ void handle_get_pwm_mode(char* const* argv, uint8_t argc, Ports* ports) {
 }
 
 #ifdef DEBUG
+void handle_olen(char* const* argv, uint8_t argc) {
+  if (argc < 2) {
+    protocol_send_err();
+    return;
+  }
+  bool ok = false;
+  uint8_t value = parse_port(argv[1], &ok);
+  if (!ok || (value != 0 && value != 1)) {
+    protocol_send_err();
+    return;
+  }
+  digitalWrite(OLEN, value ? HIGH : LOW);
+  protocol_send_ok(F("LOK"));
+}
+
+void handle_mcp_dump(Ports* ports) {
+  if (!ports) {
+    protocol_send_err();
+    return;
+  }
+  uint8_t gpio_a = 0;
+  uint8_t gpio_b = 0;
+  bool probe_ok = i2c_probe(ports->mcp.addr);
+  bool read_a_ok = mcp23017_read_gpioa(&ports->mcp, &gpio_a);
+  bool read_b_ok = mcp23017_read_gpiob(&ports->mcp, &gpio_b);
+  protocol_send_mcp_dump(ports->mcp.addr, probe_ok, read_a_ok, read_b_ok, ports->mcp.gpio_a,
+                         ports->mcp.gpio_b, gpio_a, gpio_b);
+}
+#endif
+
+#ifdef DEBUG
 void handle_debug_override(char* const* argv, uint8_t argc, Ports* ports) {
   if (argc == 2 && argv[1][0] == '\0') {
     ports->debug_override = false;
@@ -413,6 +448,14 @@ void protocol_handle_command(char command, char* const* argv, uint8_t argc, Port
   case 'G':
     handle_get_pwm_mode(argv, argc, ports);
     break;
+#ifdef DEBUG
+  case 'L':
+    handle_olen(argv, argc);
+    break;
+  case 'J':
+    handle_mcp_dump(ports);
+    break;
+#endif
 #ifdef DEBUG
   case 'X':
     handle_debug_override(argv, argc, ports);

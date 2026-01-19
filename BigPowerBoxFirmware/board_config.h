@@ -3,11 +3,12 @@
 #include <Arduino.h>
 
 // ---- DEBUG defaults ----
-#define DEBUG 1
+//#define DEBUG 1
 #ifdef DEBUG
 #define DEBUG_FAKE_TEMP_CENTI 1500
 #define DEBUG_FAKE_HUMID_CENTI 5000
 #define DEBUG_DEW_LOG_INTERVAL_MS 10000
+#define DEBUG_FAKE_PROBE 1
 #endif
 
 // ---- Serial / framing ----
@@ -78,7 +79,7 @@ static const uint8_t ports2Pin[12] = {PORT1EN, PORT2EN, PORT3EN, PORT4EN,  PORT5
 
 // ---- ADC calibration (match original hardware constants) ----
 // VCC in millivolts.
-#define VCC_MV 5030
+#define VCC_MV 4700
 // Number of samples in the rolling average for ADC readings.
 #define ADC_SMOOTHING_WINDOW 4
 

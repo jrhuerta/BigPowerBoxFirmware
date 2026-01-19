@@ -48,3 +48,19 @@ bool mcp23017_write_porta(Mcp23017* m, uint8_t value) {
   m->gpio_a = value;
   return i2c_write_reg(m->addr, REG_GPIOA, &m->gpio_a, 1);
 }
+
+bool mcp23017_read_gpioa(Mcp23017* m, uint8_t* value) {
+  if (!m || !value)
+    return false;
+  if (!i2c_read_reg(m->addr, REG_GPIOA, value, 1))
+    return false;
+  return true;
+}
+
+bool mcp23017_read_gpiob(Mcp23017* m, uint8_t* value) {
+  if (!m || !value)
+    return false;
+  if (!i2c_read_reg(m->addr, REG_GPIOB, value, 1))
+    return false;
+  return true;
+}
